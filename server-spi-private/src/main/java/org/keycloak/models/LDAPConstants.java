@@ -27,6 +27,7 @@ public class LDAPConstants {
     public static final String LDAP_PROVIDER = "ldap";
     public static final String MSAD_USER_ACCOUNT_CONTROL_MAPPER = "msad-user-account-control-mapper";
     public static final String MSADLDS_USER_ACCOUNT_CONTROL_MAPPER = "msad-lds-user-account-control-mapper";
+    public static final String PASSWORD_POLICY_CONTROL_MAPPER = "password-policy-control-mapper";
 
     public static final String VENDOR = "vendor";
     public static final String VENDOR_RHDS = "rhds";

@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.Set;
 
 import javax.naming.AuthenticationException;
+import javax.naming.ldap.Control;
 
 import org.jboss.logging.Logger;
 import org.keycloak.common.constants.KerberosConstants;
@@ -575,18 +576,24 @@ public class LDAPStorageProvider implements UserStorageProvider,
             // Use Naming LDAP API
             LDAPObject ldapUser = loadAndValidateUser(realm, user);
 
+            List<Control> controls = new LinkedList<>();
+            List<ComponentModel> mappers = realm.getComponents(model.getId(), LDAPStorageMapper.class.getName());
+            List<ComponentModel> sortedMappers = mapperManager.sortMappersDesc(mappers);
+            List<LDAPStorageMapper> ldapMappers = new ArrayList<>(sortedMappers.size());
+            for (ComponentModel mapperModel : sortedMappers) {
+                if (logger.isTraceEnabled()) {
+                    logger.tracef("Using mapper %s during import user from LDAP", mapperModel);
+                }
+                LDAPStorageMapper ldapMapper = mapperManager.getMapper(mapperModel);
+                ldapMappers.add(ldapMapper);
+                controls.addAll(ldapMapper.getAuthenticationControls());
+            }
             try {
-                ldapIdentityStore.validatePassword(ldapUser, password);
+                ldapIdentityStore.validatePassword(ldapUser, password, controls);
                 return true;
             } catch (AuthenticationException ae) {
                 boolean processed = false;
-                List<ComponentModel> mappers = realm.getComponents(model.getId(), LDAPStorageMapper.class.getName());
-                List<ComponentModel> sortedMappers = mapperManager.sortMappersDesc(mappers);
-                for (ComponentModel mapperModel : sortedMappers) {
-                    if (logger.isTraceEnabled()) {
-                        logger.tracef("Using mapper %s during import user from LDAP", mapperModel);
-                    }
-                    LDAPStorageMapper ldapMapper = mapperManager.getMapper(mapperModel);
+                for (LDAPStorageMapper ldapMapper : ldapMappers) {
                     processed = processed || ldapMapper.onAuthenticationFailure(ldapUser, user, ae, realm);
                 }
                 return processed;
