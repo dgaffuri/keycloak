@@ -483,7 +483,7 @@ public class LDAPOperationManager {
      * @throws AuthenticationException if authentication is not successful
      *
      */
-    public void authenticate(String dn, String password) throws AuthenticationException {
+    public void authenticate(String dn, String password, List<Control> controls) throws AuthenticationException {
         InitialContext authCtx = null;
 
         try {
@@ -500,7 +500,7 @@ public class LDAPOperationManager {
             // Never use connection pool to prevent password caching
             env.put("com.sun.jndi.ldap.connect.pool", "false");
 
-            authCtx = new InitialLdapContext(env, null);
+            authCtx = new InitialLdapContext(env, controls == null || controls.isEmpty() ? null : controls.toArray(new Control[controls.size()]));
 
         } catch (AuthenticationException ae) {
             if (logger.isDebugEnabled()) {
@@ -643,8 +643,10 @@ public class LDAPOperationManager {
         return id;
     }
 
-    private LdapContext createLdapContext() throws NamingException {
-        return new InitialLdapContext(new Hashtable<Object, Object>(this.connectionProperties), null);
+    private LdapContext createLdapContext(List<Control> controls) throws NamingException {
+        return new InitialLdapContext(
+        		new Hashtable<Object, Object>(this.connectionProperties),
+        		controls == null || controls.isEmpty() ? null : controls.toArray(new Control[controls.size()]));
     }
 
     private Map<String, Object> createConnectionProperties() {
@@ -738,7 +740,7 @@ public class LDAPOperationManager {
                 start = Time.currentTimeMillis();
             }
 
-            context = createLdapContext();
+            context = createLdapContext(decorator == null ? null : decorator.beforeLDAPContextCreation(operation));
             if (decorator != null) {
                 decorator.beforeLDAPOperation(context, operation);
             }
