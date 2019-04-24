@@ -23,6 +23,7 @@ import org.keycloak.storage.ldap.idm.query.internal.LDAPQuery;
 import org.keycloak.storage.ldap.mappers.LDAPOperationDecorator;
 
 import javax.naming.AuthenticationException;
+import javax.naming.ldap.Control;
 import java.util.List;
 
 /**
@@ -100,9 +101,10 @@ public interface IdentityStore {
      *
      * @param user Keycloak user
      * @param password Ldap password
+     * @param controls additional controls
      * @throws AuthenticationException if authentication is not successful
      */
-    void validatePassword(LDAPObject user, String password) throws AuthenticationException;
+    void validatePassword(LDAPObject user, String password, List<Control> controls) throws AuthenticationException;
 
     /**
      * Updates the specified credential value.

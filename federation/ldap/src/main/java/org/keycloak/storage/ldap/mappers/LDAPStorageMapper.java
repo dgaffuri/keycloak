@@ -26,6 +26,7 @@ import org.keycloak.storage.ldap.idm.query.internal.LDAPQuery;
 import org.keycloak.storage.user.SynchronizationResult;
 
 import javax.naming.AuthenticationException;
+import javax.naming.ldap.Control;
 import java.util.List;
 
 /**
@@ -91,6 +92,13 @@ public interface LDAPStorageMapper extends Provider {
      * @param query
      */
     void beforeLDAPQuery(LDAPQuery query);
+
+    /**
+     * Called before LDAP Authentication. It allows to add mapper soecific controls to LDAP context
+     *
+     * @return the controls
+     */
+    List<Control> getAuthenticationControls();
 
     /**
      * Called when LDAP authentication of specified user fails. If any mapper returns true from this method, AuthenticationException won't be rethrown!
