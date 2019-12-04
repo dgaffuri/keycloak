@@ -4,11 +4,13 @@ import org.jboss.logging.Logger;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.LDAPConstants;
 import org.keycloak.storage.ldap.LDAPConfig;
+import org.keycloak.storage.ldap.mappers.LDAPOperationDecorator;
 import org.keycloak.vault.VaultCharSecret;
 
 import javax.naming.AuthenticationException;
 import javax.naming.Context;
 import javax.naming.NamingException;
+import javax.naming.ldap.Control;
 import javax.naming.ldap.InitialLdapContext;
 import javax.naming.ldap.LdapContext;
 import javax.naming.ldap.StartTlsRequest;
@@ -17,6 +19,7 @@ import java.io.IOException;
 import java.nio.CharBuffer;
 import java.util.HashMap;
 import java.util.Hashtable;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
@@ -32,6 +35,7 @@ public final class LDAPContextManager implements AutoCloseable {
 
     private final KeycloakSession session;
     private final LDAPConfig ldapConfig;
+    private final List<Control> controls;
     private StartTlsResponse tlsResponse;
 
     private  VaultCharSecret vaultCharSecret = new VaultCharSecret() {
@@ -53,13 +57,19 @@ public final class LDAPContextManager implements AutoCloseable {
 
     private LdapContext ldapContext;
 
-    public LDAPContextManager(KeycloakSession session, LDAPConfig connectionProperties) {
+    public LDAPContextManager(KeycloakSession session, LDAPConfig connectionProperties, List<Control> controls) {
         this.session = session;
         this.ldapConfig = connectionProperties;
+        this.controls = controls;
+        
     }
 
     public static LDAPContextManager create(KeycloakSession session, LDAPConfig connectionProperties) {
-        return new LDAPContextManager(session, connectionProperties);
+        return create(session, connectionProperties, null);
+    }
+
+    public static LDAPContextManager create(KeycloakSession session, LDAPConfig connectionProperties, List<Control> controls) {
+        return new LDAPContextManager(session, connectionProperties, controls);
     }
 
     private void createLdapContext() throws NamingException {
@@ -74,7 +84,7 @@ public final class LDAPContextManager implements AutoCloseable {
             }
         }
 
-        ldapContext = new InitialLdapContext(connProp, null);
+        ldapContext = new InitialLdapContext(connProp, controls == null || controls.isEmpty() ? null : controls.toArray(new Control[controls.size()]));
         if (ldapConfig.isStartTls()) {
             tlsResponse = startTLS(ldapContext, ldapConfig.getAuthType(), ldapConfig.getBindDN(),
                     vaultCharSecret.getAsArray().orElse(ldapConfig.getBindCredential().toCharArray()));
