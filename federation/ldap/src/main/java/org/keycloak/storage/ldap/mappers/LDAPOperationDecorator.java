@@ -17,7 +17,10 @@
 
 package org.keycloak.storage.ldap.mappers;
 
+import java.util.List;
+
 import javax.naming.NamingException;
+import javax.naming.ldap.Control;
 import javax.naming.ldap.LdapContext;
 
 import org.keycloak.storage.ldap.idm.store.ldap.LDAPOperationManager;
@@ -26,6 +29,8 @@ import org.keycloak.storage.ldap.idm.store.ldap.LDAPOperationManager;
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
  */
 public interface LDAPOperationDecorator {
+	
+	List<Control> beforeLDAPContextCreation(LDAPOperationManager.LdapOperation ldapOperation);
 
     void beforeLDAPOperation(LdapContext ldapContext, LDAPOperationManager.LdapOperation ldapOperation) throws NamingException;
 

@@ -486,7 +486,7 @@ public class LDAPOperationManager {
      * @throws AuthenticationException if authentication is not successful
      *
      */
-    public void authenticate(String dn, String password) throws AuthenticationException {
+    public void authenticate(String dn, String password, List<Control> controls) throws AuthenticationException {
 
         if (password == null || password.isEmpty()) {
             throw new AuthenticationException("Empty password used");
@@ -508,7 +508,7 @@ public class LDAPOperationManager {
                 env.put(Context.SECURITY_CREDENTIALS, password);
             }
 
-            authCtx = new InitialLdapContext(env, null);
+            authCtx = new InitialLdapContext(env, controls == null || controls.isEmpty() ? null : controls.toArray(new Control[controls.size()]));
             if (config.isStartTls()) {
                 tlsResponse = LDAPContextManager.startTLS(authCtx, "simple", dn, password.toCharArray());
 
@@ -674,7 +674,7 @@ public class LDAPOperationManager {
     }
 
     private <R> R execute(LdapOperation<R> operation, LDAPOperationDecorator decorator) throws NamingException {
-        try (LDAPContextManager ldapContextManager = LDAPContextManager.create(session, config)) {
+        try (LDAPContextManager ldapContextManager = LDAPContextManager.create(session, config, decorator == null ? null : decorator.beforeLDAPContextCreation(operation))) {
             return execute(operation, ldapContextManager.getLdapContext(), decorator);
         }
     }
