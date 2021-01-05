@@ -45,6 +45,7 @@ import javax.naming.directory.DirContext;
 import javax.naming.directory.ModificationItem;
 import javax.naming.directory.SearchControls;
 import javax.naming.directory.SearchResult;
+import javax.naming.ldap.Control;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -346,13 +347,18 @@ public class LDAPIdentityStore implements IdentityStore {
 
     @Override
     public void validatePassword(LDAPObject user, String password) throws AuthenticationException {
+        validatePassword(user, password, null);
+    }
+
+    @Override
+    public void validatePassword(LDAPObject user, String password, List<Control> controls) throws AuthenticationException {
         String userDN = user.getDn().toString();
 
         if (logger.isTraceEnabled()) {
             logger.tracef("Using DN [%s] for authentication of user", userDN);
         }
 
-        operationManager.authenticate(userDN, password);
+        operationManager.authenticate(userDN, password, controls);
     }
 
     @Override
