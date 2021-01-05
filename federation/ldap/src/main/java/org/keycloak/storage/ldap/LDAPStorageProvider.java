@@ -18,8 +18,10 @@
 package org.keycloak.storage.ldap;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -28,6 +30,7 @@ import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 import javax.naming.AuthenticationException;
+import javax.naming.ldap.Control;
 
 import org.jboss.logging.Logger;
 import org.keycloak.common.constants.KerberosConstants;
@@ -622,21 +625,28 @@ public class LDAPStorageProvider implements UserStorageProvider,
             // Use Naming LDAP API
             LDAPObject ldapUser = loadAndValidateUser(realm, user);
 
+            List<Control> controls = Collections.synchronizedList(new LinkedList<>());
+            List<LDAPStorageMapper> ldapMappers = Collections.synchronizedList(new LinkedList<>());
+            realm.getComponentsStream(model.getId(), LDAPStorageMapper.class.getName())
+                    .sorted(ldapMappersComparator.sortDesc())
+                    .forEachOrdered(mapperModel -> {
+                        if (logger.isTraceEnabled()) {
+                            logger.tracef("Using mapper %s during import user from LDAP", mapperModel);
+                        }
+                        LDAPStorageMapper ldapMapper = mapperManager.getMapper(mapperModel);
+                        ldapMappers.add(ldapMapper);
+                        controls.addAll(ldapMapper.getAuthenticationControls());
+                    });
+
             try {
-                ldapIdentityStore.validatePassword(ldapUser, password);
+                ldapIdentityStore.validatePassword(ldapUser, password, controls);
                 return true;
             } catch (AuthenticationException ae) {
-                AtomicReference<Boolean> processed = new AtomicReference<>(false);
-                realm.getComponentsStream(model.getId(), LDAPStorageMapper.class.getName())
-                        .sorted(ldapMappersComparator.sortDesc())
-                        .forEachOrdered(mapperModel -> {
-                            if (logger.isTraceEnabled()) {
-                                logger.tracef("Using mapper %s during import user from LDAP", mapperModel);
-                            }
-                            LDAPStorageMapper ldapMapper = mapperManager.getMapper(mapperModel);
-                            processed.set(processed.get() || ldapMapper.onAuthenticationFailure(ldapUser, user, ae, realm));
-                        });
-                return processed.get();
+                boolean processed = false;
+                for (LDAPStorageMapper ldapMapper : ldapMappers) {
+                    processed = processed || ldapMapper.onAuthenticationFailure(ldapUser, user, ae, realm);
+                }
+                return processed;
             }
         }
     }
