@@ -27,6 +27,8 @@ import org.keycloak.storage.ldap.idm.model.LDAPObject;
 import org.keycloak.storage.user.SynchronizationResult;
 
 import javax.naming.AuthenticationException;
+import javax.naming.ldap.Control;
+
 import java.util.Collections;
 import java.util.List;
 import org.keycloak.models.RoleModel;
@@ -67,6 +69,11 @@ public abstract class AbstractLDAPStorageMapper implements LDAPStorageMapper {
     public List<UserModel> getRoleMembers(RealmModel realm, RoleModel role, int firstResult, int maxResults) {
         return Collections.emptyList();
     }
+
+    @Override
+	public List<Control> getAuthenticationControls() {
+		return Collections.emptyList();
+	}
 
     @Override
     public boolean onAuthenticationFailure(LDAPObject ldapUser, UserModel user, AuthenticationException ldapException, RealmModel realm) {
