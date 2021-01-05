@@ -17,12 +17,16 @@
 
 package org.keycloak.storage.ldap.mappers.msad;
 
+import java.util.List;
+
 import javax.naming.NamingException;
 import javax.naming.ldap.BasicControl;
+import javax.naming.ldap.Control;
 import javax.naming.ldap.LdapContext;
 
 import org.jboss.logging.Logger;
 import org.keycloak.storage.ldap.idm.store.ldap.LDAPOperationManager;
+import org.keycloak.storage.ldap.idm.store.ldap.LDAPOperationManager.LdapOperation;
 import org.keycloak.storage.ldap.mappers.LDAPOperationDecorator;
 
 /**
@@ -46,4 +50,9 @@ public class LDAPServerPolicyHintsDecorator implements LDAPOperationDecorator {
         BasicControl[] controls = new BasicControl[] { control };
         ldapContext.setRequestControls(controls);
     }
+
+	@Override
+	public List<Control> beforeLDAPContextCreation(LdapOperation ldapOperation) {
+		return null;
+	}
 }
