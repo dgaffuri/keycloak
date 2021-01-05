@@ -103,6 +103,7 @@ public class JWKBuilder {
 
         String kid = this.kid != null ? this.kid : KeyUtils.createKeyId(key);
         int fieldSize = ecKey.getParams().getCurve().getField().getFieldSize();
+        int fieldBytes = (fieldSize + 7)/ 8;
         BigInteger affineX = ecKey.getW().getAffineX();
         BigInteger affineY = ecKey.getW().getAffineY();
 
@@ -111,22 +112,31 @@ public class JWKBuilder {
         k.setAlgorithm(algorithm);
         k.setPublicKeyUse(DEFAULT_PUBLIC_KEY_USE);
         k.setCrv("P-" + fieldSize);
-        k.setX(Base64Url.encode(toIntegerBytes(ecKey.getW().getAffineX())));
-        k.setY(Base64Url.encode(toIntegerBytes(ecKey.getW().getAffineY())));
+        k.setX(Base64Url.encode(toIntegerBytes(affineX, fieldBytes)));
+        k.setY(Base64Url.encode(toIntegerBytes(affineY, fieldBytes)));
         
         return k;
     }
 
-    /**
-     * Copied from org.apache.commons.codec.binary.Base64
-     */
     private static byte[] toIntegerBytes(final BigInteger bigInt) {
+        return toIntegerBytes(bigInt, (bigInt.bitLength() + 7)/ 8);
+    }
+
+    /**
+     * Copied from org.apache.commons.codec.binary.Base64, but accepting a desired size
+     */
+    private static byte[] toIntegerBytes(final BigInteger bigInt, final int desiredSize) {
         int bitlen = bigInt.bitLength();
         // round bitlen
         bitlen = ((bitlen + 7) >> 3) << 3;
+        // ensure that desired size is not too small
+        int size = desiredSize;
+        if (size < bitlen / 8) {
+            size = bitlen / 8;
+        }
         final byte[] bigBytes = bigInt.toByteArray();
 
-        if (((bigInt.bitLength() % 8) != 0) && (((bigInt.bitLength() / 8) + 1) == (bitlen / 8))) {
+        if (((bigInt.bitLength() % 8) != 0) && (bigBytes.length == size)) {
             return bigBytes;
         }
         // set up params for copying everything but sign bit
@@ -138,8 +148,8 @@ public class JWKBuilder {
             startSrc = 1;
             len--;
         }
-        final int startDst = bitlen / 8 - len; // to pad w/ nulls as per spec
-        final byte[] resizedBytes = new byte[bitlen / 8];
+        final int startDst = size - len; // to pad w/ nulls as per spec
+        final byte[] resizedBytes = new byte[size];
         System.arraycopy(bigBytes, startSrc, resizedBytes, startDst, len);
         return resizedBytes;
     }
