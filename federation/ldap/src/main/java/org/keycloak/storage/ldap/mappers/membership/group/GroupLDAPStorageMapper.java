@@ -19,6 +19,7 @@ package org.keycloak.storage.ldap.mappers.membership.group;
 
 import org.jboss.logging.Logger;
 import org.keycloak.component.ComponentModel;
+import org.keycloak.models.ClientModel;
 import org.keycloak.models.GroupModel;
 import org.keycloak.models.ModelException;
 import org.keycloak.models.RealmModel;
@@ -65,7 +66,121 @@ public class GroupLDAPStorageMapper extends AbstractLDAPStorageMapper implements
 
     private static final Logger logger = Logger.getLogger(GroupLDAPStorageMapper.class);
 
-    private final GroupMapperConfig config;
+    private static class LdapOnlyGroupModel implements GroupModel {
+		
+    	private final String id;
+		private String name;
+		private final Map<String, List<String>> attributes = new HashMap<>();
+		
+		private LdapOnlyGroupModel(String id, String name) {
+			this.id = id;
+			this.name = name;
+		}
+
+		@Override
+		public Set<RoleModel> getRealmRoleMappings() {
+			return Collections.emptySet();
+		}
+
+		@Override
+		public Set<RoleModel> getClientRoleMappings(ClientModel app) {
+			return Collections.emptySet();
+		}
+
+		@Override
+		public boolean hasRole(RoleModel role) {
+			return false;
+		}
+
+		@Override
+		public void grantRole(RoleModel role) {
+		}
+
+		@Override
+		public Set<RoleModel> getRoleMappings() {
+			return Collections.emptySet();
+		}
+
+		@Override
+		public void deleteRoleMapping(RoleModel role) {
+		}
+
+		@Override
+		public String getId() {
+			return id;
+		}
+
+		@Override
+		public String getName() {
+			return name;
+		}
+
+		@Override
+		public void setName(String name) {
+			this.name = name;
+		}
+
+		@Override
+		public void setSingleAttribute(String name, String value) {
+			setAttribute(name, Collections.singletonList(value));
+		}
+
+		@Override
+		public void setAttribute(String name, List<String> values) {
+			attributes.put(name, values);
+		}
+
+		@Override
+		public void removeAttribute(String name) {
+			attributes.remove(name);
+		}
+
+		@Override
+		public String getFirstAttribute(String name) {
+			List<String> values = getAttribute(name);
+			return values == null || values.isEmpty() ? null : values.get(0);
+		}
+
+		@Override
+		public List<String> getAttribute(String name) {
+			return attributes.get(name);
+		}
+
+		@Override
+		public Map<String, List<String>> getAttributes() {
+			return attributes;
+		}
+
+		@Override
+		public GroupModel getParent() {
+			return null;
+		}
+
+		@Override
+		public String getParentId() {
+			return null;
+		}
+
+		@Override
+		public Set<GroupModel> getSubGroups() {
+			return Collections.emptySet();
+		}
+
+		@Override
+		public void setParent(GroupModel group) {
+		}
+
+		@Override
+		public void addChild(GroupModel subGroup) {
+		}
+
+		@Override
+		public void removeChild(GroupModel subGroup) {
+		}
+	};
+
+
+	private final GroupMapperConfig config;
     private final GroupLDAPStorageMapperFactory factory;
 
     // Flag to avoid syncing multiple times per transaction
@@ -166,6 +281,11 @@ public class GroupLDAPStorageMapper extends AbstractLDAPStorageMapper implements
             }
 
         };
+
+        if (config.getMode() == LDAPGroupMapperMode.NOT_SYNCED) {
+            logger.warnf("Ignored sync for federation mapper '%s' as it's mode is '%s'", mapperModel.getName(), config.getMode().toString());
+            return syncResult;
+        }
 
         logger.debugf("Syncing groups from LDAP into Keycloak DB. Mapper is [%s], LDAP provider is [%s]", mapperModel.getName(), ldapProvider.getModel().getName());
 
@@ -376,6 +496,14 @@ public class GroupLDAPStorageMapper extends AbstractLDAPStorageMapper implements
     }
 
     protected GroupModel findKcGroupOrSyncFromLDAP(RealmModel realm, LDAPObject ldapGroup, UserModel user) {
+    	if (config.getMode() == LDAPGroupMapperMode.NOT_SYNCED) {
+            String groupNameAttr = config.getGroupNameLdapAttribute();
+            String groupId = ldapGroup.getUuid();
+            String groupName = ldapGroup.getAttributeAsString(groupNameAttr);
+            GroupModel kcGroup = new LdapOnlyGroupModel(groupId, groupName);
+    		updateAttributesOfKCGroup(kcGroup, ldapGroup);
+    		return kcGroup;
+    	};
         GroupModel kcGroup = findKcGroupByLDAPGroup(realm, ldapGroup);
 
         if (kcGroup == null) {

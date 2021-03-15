@@ -156,7 +156,7 @@ public class GroupLDAPStorageMapperFactory extends AbstractLDAPStorageMapperFact
                     .helpText("LDAP_ONLY means that all group mappings of users are retrieved from LDAP and saved into LDAP. READ_ONLY is Read-only LDAP mode where group mappings are " +
                             "retrieved from both LDAP and DB and merged together. New group joins are not saved to LDAP but to DB. IMPORT is Read-only LDAP mode where group mappings are " +
                             "retrieved from LDAP just at the time when user is imported from LDAP and then " +
-                            "they are saved to local keycloak DB.")
+                            "they are saved to local keycloak DB. NOT_SYNCED means that groups are always retrieved from LDAP and are never saved to local keycloak DB")
                     .type(ProviderConfigProperty.LIST_TYPE)
                     .options(MODES)
                     .defaultValue(mode)
@@ -165,7 +165,8 @@ public class GroupLDAPStorageMapperFactory extends AbstractLDAPStorageMapperFact
             config.property().name(GroupMapperConfig.MODE)
                     .label("Mode")
                     .helpText("LDAP_ONLY means that specified group mappings are writable to LDAP. "
-                              + "READ_ONLY means that group mappings are not writable to LDAP.")
+                              + "READ_ONLY means that group mappings are not writable to LDAP."
+                              + "NOT_SYNCED means that group mappings are not saved to loacl keycloak DB.")
                     .type(ProviderConfigProperty.LIST_TYPE)
                     .options(NO_IMPORT_MODES)
                     .defaultValue(mode)
